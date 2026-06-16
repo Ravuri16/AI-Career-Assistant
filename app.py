@@ -1,31 +1,51 @@
 import streamlit as st
 import re
-from collections import Counter
 
-st.set_page_config(
-    page_title="AI Career Assistant",
-    page_icon="💼",
-    layout="wide"
-)
+st.set_page_config(page_title="AI Career Assistant", page_icon="💼", layout="wide")
 
 st.title("💼 AI Career Assistant")
 st.write(
-    "Analyze your resume against any job description, identify keyword gaps, "
-    "and generate interview preparation suggestions."
+    "Compare your resume with a job description and receive a match score, "
+    "skill gaps, resume suggestions, and interview preparation questions."
 )
 
 st.divider()
 
-resume = st.text_area("Paste Your Resume", height=260)
-job_description = st.text_area("Paste Job Description", height=260)
+resume = st.text_area("Paste Your Resume", height=250)
+job_description = st.text_area("Paste Job Description", height=250)
 
-stop_words = {
-    "the", "and", "for", "with", "this", "that", "you", "your", "are", "will",
-    "have", "has", "from", "our", "their", "they", "about", "into", "using",
-    "use", "used", "able", "work", "role", "job", "team", "position",
-    "responsibilities", "requirements", "experience", "skills", "ability",
-    "including", "such", "across", "within", "based", "support", "strong",
-    "good", "basic", "preferred", "required", "candidate", "company"
+skill_library = {
+    "Data & Analytics": [
+        "python", "sql", "excel", "tableau", "power bi", "data analysis",
+        "data visualization", "dashboard", "reporting", "pandas", "numpy",
+        "machine learning", "statistics", "etl", "data quality"
+    ],
+    "Software & Cloud": [
+        "java", "javascript", "html", "css", "react", "angular", "api",
+        "rest api", "git", "github", "aws", "azure", "gcp", "docker",
+        "kubernetes", "linux", "streamlit"
+    ],
+    "Finance": [
+        "finance", "accounting", "economics", "financial modeling",
+        "capital markets", "corporate financial reporting", "restructuring",
+        "distressed investing", "leveraged finance", "private placements",
+        "credit", "valuation", "powerpoint", "excel"
+    ],
+    "Data Center & IT": [
+        "tcp/ip", "networking", "server", "hardware", "data center",
+        "cabling", "fiber optics", "structured cabling", "operating systems",
+        "troubleshooting", "ticketing", "remote hands", "security",
+        "power", "cooling"
+    ],
+    "Professional Skills": [
+        "communication", "documentation", "stakeholder", "teamwork",
+        "leadership", "problem solving", "attention to detail",
+        "writing", "presentation", "agile", "jira"
+    ],
+    "AI Skills": [
+        "ai", "artificial intelligence", "claude", "chatgpt",
+        "prompt engineering", "automation", "llm", "generative ai"
+    ]
 }
 
 def clean_text(text):
@@ -33,122 +53,93 @@ def clean_text(text):
     text = re.sub(r"[^a-zA-Z0-9+#./ ]", " ", text)
     return text
 
-def get_keywords(text, top_n=40):
+def find_skills(text):
     text = clean_text(text)
-    words = text.split()
+    found = {}
 
-    keywords = []
-    for word in words:
-        if len(word) > 2 and word not in stop_words:
-            keywords.append(word)
-
-    keyword_counts = Counter(keywords)
-    return [word for word, count in keyword_counts.most_common(top_n)]
-
-def get_phrases(text):
-    text = clean_text(text)
-
-    phrase_patterns = [
-        "data center", "machine learning", "artificial intelligence",
-        "prompt engineering", "data analysis", "data visualization",
-        "power bi", "project management", "technical documentation",
-        "stakeholder communication", "network troubleshooting",
-        "server hardware", "operating systems", "cloud computing",
-        "ticketing systems", "cable management", "fiber optics",
-        "structured cabling", "python programming", "sql queries",
-        "business analysis", "quality assurance", "customer service"
-    ]
-
-    found = []
-    for phrase in phrase_patterns:
-        if phrase in text:
-            found.append(phrase)
+    for category, skills in skill_library.items():
+        matched = []
+        for skill in skills:
+            if skill in text:
+                matched.append(skill)
+        if matched:
+            found[category] = sorted(set(matched))
 
     return found
 
-def create_interview_questions(matched, missing):
-    questions = []
-
-    if matched:
-        for skill in matched[:3]:
-            questions.append(f"Can you describe your experience with {skill}?")
-
-    if missing:
-        for skill in missing[:3]:
-            questions.append(f"How would you start learning or gaining experience in {skill}?")
-
-    questions.append("Tell me about a project where you solved a real problem.")
-    questions.append("How do you explain technical information to a non-technical audience?")
-    questions.append("What would you improve in one of your past projects?")
-
-    return questions[:7]
+def flatten_skills(skill_dict):
+    all_skills = []
+    for skills in skill_dict.values():
+        all_skills.extend(skills)
+    return set(all_skills)
 
 if st.button("Analyze Resume Match"):
     if not resume.strip() or not job_description.strip():
         st.warning("Please paste both your resume and the job description.")
     else:
-        resume_keywords = set(get_keywords(resume, 60))
-        job_keywords = set(get_keywords(job_description, 60))
+        resume_skill_dict = find_skills(resume)
+        job_skill_dict = find_skills(job_description)
 
-        resume_phrases = set(get_phrases(resume))
-        job_phrases = set(get_phrases(job_description))
+        resume_skills = flatten_skills(resume_skill_dict)
+        job_skills = flatten_skills(job_skill_dict)
 
-        matched_keywords = sorted(resume_keywords.intersection(job_keywords))
-        missing_keywords = sorted(job_keywords.difference(resume_keywords))
+        matched_skills = sorted(resume_skills.intersection(job_skills))
+        missing_skills = sorted(job_skills.difference(resume_skills))
 
-        matched_phrases = sorted(resume_phrases.intersection(job_phrases))
-        missing_phrases = sorted(job_phrases.difference(resume_phrases))
-
-        total_job_terms = len(job_keywords) + len(job_phrases)
-        total_matches = len(matched_keywords) + len(matched_phrases)
-
-        if total_job_terms > 0:
-            match_score = round((total_matches / total_job_terms) * 100)
+        if job_skills:
+            match_score = round((len(matched_skills) / len(job_skills)) * 100)
         else:
             match_score = 0
 
         st.subheader("📊 Match Score")
-        st.progress(min(match_score, 100) / 100)
-        st.metric("Resume Match", f"{min(match_score, 100)}%")
+        st.progress(match_score / 100)
+        st.metric("Resume Match", f"{match_score}%")
 
         col1, col2 = st.columns(2)
 
         with col1:
-            st.subheader("✅ Matched Keywords & Skills")
-            if matched_phrases or matched_keywords:
-                for item in matched_phrases[:10]:
-                    st.success(item.title())
-                for item in matched_keywords[:20]:
-                    st.success(item.title())
+            st.subheader("✅ Matched Skills")
+            if matched_skills:
+                for skill in matched_skills:
+                    st.success(skill.title())
             else:
-                st.info("No strong matches found.")
+                st.info("No matching skills found.")
 
         with col2:
-            st.subheader("⚠️ Missing Keywords & Skills")
-            if missing_phrases or missing_keywords:
-                for item in missing_phrases[:10]:
-                    st.error(item.title())
-                for item in missing_keywords[:20]:
-                    st.error(item.title())
+            st.subheader("⚠️ Missing Skills")
+            if missing_skills:
+                for skill in missing_skills:
+                    st.error(skill.title())
             else:
-                st.success("No major missing keywords found.")
+                st.success("No major missing skills found.")
+
+        st.subheader("📌 Skills Found in Job Description")
+        if job_skill_dict:
+            for category, skills in job_skill_dict.items():
+                st.write(f"**{category}:** {', '.join([s.title() for s in skills])}")
+        else:
+            st.write("No recognized skills found in the job description.")
 
         st.subheader("📝 Resume Improvement Suggestions")
-        if missing_phrases or missing_keywords:
-            st.write("Consider strengthening your resume with relevant projects, coursework, or experience related to:")
-            for item in (missing_phrases + missing_keywords)[:10]:
-                st.write(f"- {item.title()}")
+        if missing_skills:
+            st.write("Consider adding relevant projects, coursework, certifications, or experience related to:")
+            for skill in missing_skills[:10]:
+                st.write(f"- {skill.title()}")
         else:
-            st.write("Your resume appears to align well with the job description.")
+            st.write("Your resume includes the main skills detected in the job description.")
 
         st.subheader("🎯 Suggested Interview Questions")
-        questions = create_interview_questions(
-            matched_phrases + matched_keywords,
-            missing_phrases + missing_keywords
-        )
+        focus_skills = missing_skills[:4] if missing_skills else matched_skills[:4]
 
-        for i, question in enumerate(questions, 1):
-            st.write(f"{i}. {question}")
+        if focus_skills:
+            for i, skill in enumerate(focus_skills, 1):
+                st.write(f"{i}. Can you describe your experience or learning plan for {skill.title()}?")
+            st.write(f"{len(focus_skills)+1}. Tell me about a project where you solved a real problem.")
+            st.write(f"{len(focus_skills)+2}. How do you explain technical information to non-technical stakeholders?")
+        else:
+            st.write("1. Tell me about your background and why you are interested in this role.")
+            st.write("2. Describe a project you built from start to finish.")
+            st.write("3. What skills are you currently improving?")
 
         st.subheader("📧 Recruiter Message Draft")
         st.info(
@@ -156,7 +147,3 @@ if st.button("Analyze Resume Match"):
             "I have relevant experience and am excited about the opportunity to contribute. "
             "Please let me know the next steps."
         )
-
-        st.subheader("🔍 Top Job Description Keywords")
-        top_job_keywords = get_keywords(job_description, 25)
-        st.write(", ".join(top_job_keywords))
