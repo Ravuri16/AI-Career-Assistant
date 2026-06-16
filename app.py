@@ -1,30 +1,30 @@
-def analyze_job_match(resume, job_description):
+import streamlit as st
+
+st.title("AI Career Assistant")
+
+st.write("Analyze your resume against a job description.")
+
+resume = st.text_area("Paste your Resume")
+
+job_description = st.text_area("Paste Job Description")
+
+if st.button("Analyze"):
+
     resume_words = set(resume.lower().split())
     job_words = set(job_description.lower().split())
 
-    matched_skills = resume_words.intersection(job_words)
-    missing_words = job_words.difference(resume_words)
+    matched = resume_words.intersection(job_words)
+    missing = job_words.difference(resume_words)
 
-    return matched_skills, list(missing_words)[:10]
+    st.subheader("Matched Skills")
+    for skill in matched:
+        st.write(f"✅ {skill}")
 
+    st.subheader("Missing Skills")
+    for skill in list(missing)[:10]:
+        st.write(f"❌ {skill}")
 
-print("AI Career Assistant")
-print("-------------------")
-
-resume = input("Paste your resume text: ")
-job_description = input("Paste the job description: ")
-
-matched, missing = analyze_job_match(resume, job_description)
-
-print("\nMatched Keywords:")
-for word in matched:
-    print("-", word)
-
-print("\nPossible Missing Keywords:")
-for word in missing:
-    print("-", word)
-
-print("\nSuggested Interview Questions:")
-print("1. Tell me about your experience related to this role.")
-print("2. What technical skills make you a good fit?")
-print("3. Describe a project that matches this job description.")
+    st.subheader("Suggested Interview Questions")
+    st.write("1. Tell me about a project related to this role.")
+    st.write("2. What technical skills make you a good fit?")
+    st.write("3. Describe a challenge you solved.")
